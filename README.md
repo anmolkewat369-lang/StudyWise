@@ -39,7 +39,22 @@ When Supabase keys are not configured, the Log in / Get started buttons open a p
 6. Use **Create an account** to register. If email confirmation is enabled in Supabase, click the confirmation link before logging in.
 7. In Supabase Authentication URL settings, add your local URL (for example `http://localhost:5173`) to the allowed redirect URLs. Add your production domain there before deployment.
 
-Real authentication is handled by Supabase Auth. The client uses the project URL and public browser key; row-level security and authorization must still be configured before storing user data in database tables. In this MVP, course/topic/task data is still local to the browser and is not synced to the user's account.
+Real authentication is handled by Supabase Auth. The client uses the project URL and public browser key; never use a service-role key in Vercel or in this browser application.
+
+### Enable private cloud workspaces
+
+Authentication and cloud storage are enabled together. Before deploying, apply every SQL file in `supabase/migrations/` to the same Supabase project, in filename order. The schema enables RLS and limits every course, topic, task, resource, practice attempt, and setting to its authenticated owner.
+
+With those migrations applied, StudyWise restores and saves an authenticated student's workspace through Supabase. The browser keeps a scoped local copy for resilience; a visible in-app warning appears if cloud loading or saving fails. Demo mode remains fully local and is never written to Supabase.
+
+For Vercel, configure these production environment variables (not the service-role key), then redeploy:
+
+```dotenv
+VITE_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY
+```
+
+In Supabase Authentication URL settings, add the final Vercel domain (`https://studywise-vzau.vercel.app`) and any custom domain to the redirect allow-list. Configure the confirmation and password-recovery email templates with that same production redirect URL before inviting real users.
 
 ## Reproducible dependencies
 
@@ -83,8 +98,7 @@ studywise-website/
 ## Important limitations
 
 - Demo data is illustrative, not official university content.
-- Real login requires a configured Supabase project.
-- Study data remains browser-local in this version; accounts do not yet sync data between devices.
+- Real login and cross-device cloud workspaces require a configured Supabase project with the supplied migrations applied.
 - AI syllabus extraction and live university question-paper analysis are not implemented.
 
 ## Visual refresh: reference-led course cards and weekly planner
@@ -102,7 +116,7 @@ The current working source includes explicit edit/delete flows for the core reco
 
 Study tasks now carry a `scheduledDate`, and the planner navigates previous/next weeks and months, supports daily/weekly/monthly views, marks exam events and actual task workload in a month grid, jumps back to today, and pre-fills new tasks with the selected calendar date. Course exam dates are editable when adding or editing a course. The task editor also detects overlapping fixed-time sessions and can suggest a next available slot, alongside its daily-capacity warning. An on-demand what-if preview compares the selected day with a smaller/larger focus-time budget, flags prerequisite-blocked work separately, and leaves the actual plan untouched until the student chooses Recovery Mode. Courses, topics, tasks, and resources support edit/delete flows; course deletion confirms and removes its linked topics, tasks, and resources. Study tasks and library resources can be linked to a syllabus topic, with backup validation enforcing same-course references and topic deletion clearing those links safely. Resource links open only over HTTP/HTTPS; sample resource cards explicitly show when no link is attached rather than pretending a PDF is present. Browser storage keys are scoped to the demo workspace or the signed-in user's identity to avoid mixing separate local workspaces. Illustrative sample records appear only in demo mode; new authenticated workspaces start empty, and reset behavior preserves that separation.
 
-**Important:** Supabase currently provides authentication only. Study data is still saved in that browser, not synced to a cloud database. Cloud synchronization must not be considered complete until both prepared database migrations are applied, Row Level Security policies are independently verified, and a tested repository/sync adapter is connected. A production Vite build and browser walkthrough are still pending because the package registry could not be reached (`EAI_AGAIN` from `npm ping`); do not treat syntax/transpilation checks as a production build. No lockfile has been fabricated. AI document extraction and AI tutoring are not yet implemented.
+**Important:** Supabase cloud workspaces depend on the supplied migrations being applied and RLS being independently verified in the target project. A production Vite build passes locally. AI document extraction and AI tutoring are not implemented.
 
 ## Premium visual direction (October 2026)
 

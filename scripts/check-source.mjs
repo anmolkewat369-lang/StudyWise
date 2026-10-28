@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { transformWithOxc } from 'vite';
 
 const root = process.cwd();
 const sourceRoots = ['src', 'tests'];
@@ -32,35 +32,19 @@ const errors = [];
 for (const file of files) {
   const absolutePath = path.resolve(file);
   const source = fs.readFileSync(absolutePath, 'utf8');
-  const sourceFile = ts.createSourceFile(absolutePath, source, ts.ScriptTarget.Latest, true,
-    file.endsWith('.jsx') || file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.JS);
-
-  const result = ts.transpileModule(source, {
-    fileName: absolutePath,
-    reportDiagnostics: true,
-    compilerOptions: {
-      allowJs: true,
-      jsx: ts.JsxEmit.ReactJSX,
-      target: ts.ScriptTarget.ES2022,
-      module: ts.ModuleKind.ESNext,
-    },
-  });
-  for (const diagnostic of result.diagnostics ?? []) {
-    if (diagnostic.category !== ts.DiagnosticCategory.Error) continue;
-    const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
-    errors.push(`${file}: ${message}`);
+  try {
+    await transformWithOxc(source, absolutePath, { loader: /\.tsx?$/.test(file) ? 'tsx' : file.endsWith('.jsx') ? 'jsx' : 'js', target: 'es2022' });
+  } catch (error) {
+    errors.push(`${file}: ${error.message || 'could not be parsed'}`);
   }
 
-  const checkSpecifier = (node) => {
-    if (!node.moduleSpecifier || !ts.isStringLiteral(node.moduleSpecifier)) return;
-    const specifier = node.moduleSpecifier.text;
-    if (!specifier.startsWith('.')) return;
+  const importPattern = /(?:import|export)\s+(?:[\s\S]*?\s+from\s+)?["']([^"']+)["']/g;
+  for (const match of source.matchAll(importPattern)) {
+    const specifier = match[1];
+    if (!specifier.startsWith('.')) continue;
     if (!resolveLocalImport(absolutePath, specifier)) {
       errors.push(`${file}: local import "${specifier}" does not resolve to a project file`);
     }
-  };
-  for (const statement of sourceFile.statements) {
-    if (ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)) checkSpecifier(statement);
   }
 }
 
