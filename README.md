@@ -19,9 +19,9 @@ New workspaces can start with a semester setup flow: add several courses, option
 
 ## Login behavior
 
-### Preview mode (works without an account backend)
+### Development-only demo
 
-When Supabase keys are not configured, the Log in / Get started buttons open a preview access dialog. Choose a display name and optionally enter an email, then select **Continue to demo**. This is only a local preview profile; it does not verify identity, store a password, or create a real account. Demo study data and the preview profile are saved in that browser's local storage. Use **Settings → Sign out** to exit the preview session.
+When running Vite locally with `npm run dev`, the Log in / Get started buttons offer a clearly labeled local demo if Supabase is not configured. This is sample data, does not verify identity, and is stored only in that browser. It is not available in a production build. If production Supabase configuration is missing, StudyWise displays an account-configuration error instead of opening a demo profile.
 
 ### Enable real email/password authentication
 
@@ -36,16 +36,16 @@ When Supabase keys are not configured, the Log in / Get started buttons open a p
    ```
 
 5. Stop the Vite server (`Ctrl+C`) and run `npm run dev` again. Vite reads `.env.local` only when the dev server starts.
-6. Use **Create an account** to register. If email confirmation is enabled in Supabase, click the confirmation link before logging in.
+6. Use **Create an account** to register. Confirm your email from the message Supabase sends before logging in. From the login dialog, use **Forgot password?** to request a reset link; password recovery returns to the configured site URL.
 7. In Supabase Authentication URL settings, add your local URL (for example `http://localhost:5173`) to the allowed redirect URLs. Add your production domain there before deployment.
 
 Real authentication is handled by Supabase Auth. The client uses the project URL and public browser key; never use a service-role key in Vercel or in this browser application.
 
 ### Enable private cloud workspaces
 
-Authentication and cloud storage are enabled together. Before deploying, apply every SQL file in `supabase/migrations/` to the same Supabase project, in filename order. The schema enables RLS and limits every course, topic, task, resource, practice attempt, and setting to its authenticated owner.
+Before deploying, apply every SQL file in `supabase/migrations/` to the same Supabase project, in filename order. The migrations create the per-user workspace tables, enforce task/topic relationships, and add focus-session reflection fields. Row Level Security policies restrict each student's workspace rows to their authenticated account.
 
-With those migrations applied, StudyWise restores and saves an authenticated student's workspace through Supabase. The browser keeps a scoped local copy for resilience; a visible in-app warning appears if cloud loading or saving fails. Demo mode remains fully local and is never written to Supabase.
+Authenticated workspace data is loaded from and saved to Supabase; it is not treated as a browser-local source of truth. If cloud loading fails, the app does not upload stale browser data over the remote workspace. The local demo remains isolated and is never written to Supabase. A migration file being present in this repository does not mean it has been applied to your Supabase project.
 
 For Vercel, configure these production environment variables (not the service-role key), then redeploy:
 
@@ -55,6 +55,8 @@ VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY
 ```
 
 In Supabase Authentication URL settings, add the final Vercel domain (`https://studywise-vzau.vercel.app`) and any custom domain to the redirect allow-list. Configure the confirmation and password-recovery email templates with that same production redirect URL before inviting real users.
+
+New authenticated workspaces with no saved courses are guided through semester setup, then shown a checklist for their profile, subjects, syllabus, study availability, and first session. The dashboard starts the next open task in a pausable focus timer and records a brief reflection on completion. Missed tasks remain visible but are excluded from remaining-time and open-task totals. PDF/image syllabus extraction and device notifications are not enabled; syllabus import currently prepares candidates from pasted text for review.
 
 ## Reproducible dependencies
 
@@ -112,9 +114,7 @@ StudyWise is designed around the student's next decision. The overview foregroun
 
 ## Current foundation work
 
-The current working source includes explicit edit/delete flows for the core records, plus a text-only syllabus import: paste syllabus text, inspect and edit the candidate list, then add topics after review. Each topic also supports a personal study note, included in export/restore. It does not parse PDFs or use AI to invent syllabus entries. The small, dependency-free domain module at `src/lib/study-engine.js` handles date calculations, topic-derived metrics, priority scoring, next-exam selection, capacity-aware review scheduling, fixed-time conflict checks, stable prerequisite linking/cycle validation, recovery-plan merging, syllabus text candidates, and mistake-note updates. Its regression tests run with `npm test` and Node's built-in test runner. Recovery Mode now subtracts today's existing open workload from your selected daily capacity, respects exam urgency, avoids duplicate open tasks, and holds a topic back until its stable-ID prerequisite is mastered; renamed topics retain their relationships, circular dependencies are rejected, and ambiguous legacy references stay blocked for repair. Completed sessions do not block a later revision. Knowledge checks are limited to verified question-bank entries matching current topics; clicking Practice from readiness targets that topic when a sample question exists. Completed checks are saved locally and gradually update topic confidence; manually changing a topic status never fabricates a practice-based confidence increase. Errors schedule a closer follow-up while stronger recall gets a longer review interval; the dashboard and Readiness view surface due revisions, and one-click scheduling respects the selected daily time budget. Missed questions keep their answer choices and explanations in a review notebook; students can add a personal remediation note, and marking one reviewed does not remove the original attempt. Workspace backups include practice history and are validated for record IDs, course/topic relationships, dates, numeric ranges, preferences, and nested history before replacing local data.
-
-Study tasks now carry a `scheduledDate`, and the planner navigates previous/next weeks and months, supports daily/weekly/monthly views, marks exam events and actual task workload in a month grid, jumps back to today, and pre-fills new tasks with the selected calendar date. Course exam dates are editable when adding or editing a course. The task editor also detects overlapping fixed-time sessions and can suggest a next available slot, alongside its daily-capacity warning. An on-demand what-if preview compares the selected day with a smaller/larger focus-time budget, flags prerequisite-blocked work separately, and leaves the actual plan untouched until the student chooses Recovery Mode. Courses, topics, tasks, and resources support edit/delete flows; course deletion confirms and removes its linked topics, tasks, and resources. Study tasks and library resources can be linked to a syllabus topic, with backup validation enforcing same-course references and topic deletion clearing those links safely. Resource links open only over HTTP/HTTPS; sample resource cards explicitly show when no link is attached rather than pretending a PDF is present. Browser storage keys are scoped to the demo workspace or the signed-in user's identity to avoid mixing separate local workspaces. Illustrative sample records appear only in demo mode; new authenticated workspaces start empty, and reset behavior preserves that separation.
+The current working source includes edit/delete flows for core records and a text-only syllabus import: paste syllabus text, inspect and edit candidates, then add topics after review. PDF parsing and AI-generated topics are not implemented. The domain helpers in `src/lib/study-engine.js` cover local-date calculations, task metrics, priority, review scheduling, time conflicts, prerequisite validation, recovery planning, and text candidates. Knowledge checks save real answer snapshots and update topic evidence gradually; an authenticated workspace stores that evidence through Supabase, while the development demo remains local. Workspace backups are validated before import. The planner supports daily, weekly, and monthly views, exam events, fixed-time conflict detection, and a what-if capacity preview. Tasks, courses, topics, and resources support CRUD; records retain stable topic links and resource URLs are limited to HTTP/HTTPS. Authenticated workspaces start empty and load their records from Supabase after successful authentication.
 
 **Important:** Supabase cloud workspaces depend on the supplied migrations being applied and RLS being independently verified in the target project. A production Vite build passes locally. AI document extraction and AI tutoring are not implemented.
 
@@ -122,4 +122,4 @@ Study tasks now carry a `scheduledDate`, and the planner navigates previous/next
 
 The signed-in workspace now follows the approved StudyWise visual direction: midnight indigo navigation, electric-violet actions, soft periwinkle/lilac surfaces, rounded glass-like panels, a prominent “Next Up” action, colorful course cards, a compact weekly strip, a study timeline, and an on-demand right rail for Today's Focus, calendar events, exams, and quick access. The dashboard uses the student's saved course/topic/task data; decorative academic artwork is CSS-rendered rather than a static screenshot, so the actions and content remain functional.
 
-The approved visual reference is available at `docs/visual-reference.png`. The dashboard is responsive and collapses its right rail beneath the main content on smaller screens. This is a source implementation, not a screenshot pasted into the application. Production build and browser screenshot verification still require installing the pinned npm dependencies in an environment with registry access.
+The approved visual reference is available at `docs/visual-reference.png`. The dashboard is responsive and collapses its right rail beneath the main content on smaller screens. This is a source implementation, not a screenshot pasted into the application. A local production build and authentication-configuration browser smoke check passed; full responsive visual and production-service verification remain open.

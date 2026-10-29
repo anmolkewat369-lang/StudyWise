@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const schema = readFileSync(new URL('../supabase/migrations/202610280001_studywise_schema.sql', import.meta.url), 'utf8');
 const taskIntegrityMigration = readFileSync(new URL('../supabase/migrations/202610280002_enforce_task_topic_course.sql', import.meta.url), 'utf8');
+const focusSessionMigration = readFileSync(new URL('../supabase/migrations/202610280003_add_focus_session_reflections.sql', import.meta.url), 'utf8');
 
 test('fresh schema enforces task topic links within the same course', () => {
   const taskTable = schema.match(/create table if not exists public\.studywise_tasks \(([\s\S]*?)\n\);/i)?.[1] || '';
@@ -17,6 +18,14 @@ test('upgrade migration preserves tasks while clearing only invalid legacy topic
   assert.match(taskIntegrityMigration, /drop constraint if exists studywise_tasks_user_id_topic_id_fkey/i);
   assert.match(taskIntegrityMigration, /add constraint studywise_tasks_topic_course_fk[\s\S]*?foreign key\s*\(user_id, course_id, topic_id\)[\s\S]*?references public\.studywise_topics\(user_id, course_id, id\)/i);
   assert.doesNotMatch(taskIntegrityMigration, /delete\s+from\s+public\.studywise_tasks/i);
+});
+
+test('focus-session reflection fields are available on fresh and upgraded workspaces', () => {
+  const taskTable = schema.match(/create table if not exists public\.studywise_tasks \(([\s\S]*?)\n\);/i)?.[1] || '';
+  assert.match(taskTable, /session_reflection text not null default '' check \(length\(session_reflection\) <= 80\)/i);
+  assert.match(taskTable, /actual_minutes integer not null default 0 check \(actual_minutes between 0 and 360\)/i);
+  assert.match(focusSessionMigration, /add column if not exists session_reflection/i);
+  assert.match(focusSessionMigration, /add column if not exists actual_minutes/i);
 });
 
 test('all user-owned data tables enable RLS and use auth.uid ownership policies', () => {

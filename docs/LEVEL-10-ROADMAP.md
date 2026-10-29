@@ -94,7 +94,7 @@ A screen passes design review only when a student can answer, quickly: **What ma
 - Sustainable pricing validated with students and institutions.
 
 ## Current limitations
-- Study data is browser-local, even when Supabase Auth is configured; cloud synchronization is not implemented yet.
+- Authenticated workspace data is loaded from and saved to Supabase; the development-only demo stays browser-local. Live project configuration, applied migrations, and cross-user RLS verification remain deployment gates.
 - AI syllabus extraction and live AI tutoring are not implemented.
 - Sample syllabus and quiz material is illustrative, not official academic content. The question bank is intentionally small; a topic without a verified sample question cannot yet run a topic-specific multiple-choice check.
 - Full app build/browser verification is blocked until package installation can complete successfully.

@@ -69,6 +69,8 @@ create table if not exists public.studywise_tasks (
   scheduled_date date,
   status text not null default 'todo' check (status in ('todo', 'done', 'missed')),
   reason text not null default '',
+  session_reflection text not null default '' check (length(session_reflection) <= 80),
+  actual_minutes integer not null default 0 check (actual_minutes between 0 and 360),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   primary key (user_id, id),

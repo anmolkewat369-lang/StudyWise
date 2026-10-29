@@ -210,11 +210,11 @@ export function findNextAvailableTimeSlot(tasks = [], dateKey, durationMinutes =
 /** A factual, task-based summary for one day; unfinished work is the remaining workload. */
 export function getTaskMetricsForDate(tasks = [], dateKey, todayKey = toLocalDateKey()) {
   const dayTasks = getTasksForDate(tasks, dateKey, todayKey);
-  const openTasks = dayTasks.filter(task => task.status !== 'done');
+  const openTasks = dayTasks.filter(task => task.status !== 'done' && task.status !== 'missed');
   const sumMinutes = list => list.reduce((sum, task) => sum + Math.max(0, Number(task.minutes) || 0), 0);
   return {
     total: dayTasks.length,
-    done: dayTasks.length - openTasks.length,
+    done: dayTasks.filter(task => task.status === 'done').length,
     open: openTasks.length,
     remainingMinutes: sumMinutes(openTasks),
     learningMinutes: sumMinutes(openTasks.filter(task => task.type === 'Learn')),
@@ -434,13 +434,14 @@ export function validateWorkspaceBackup(value) {
     return invalid('The backup contains a circular prerequisite dependency.');
   }
   if (!tasks.every(t => typeof t.title === 'string' && t.title.trim()
-    && ['courseId','type','scheduledDate','time','reason','topicId'].every(key => isOptionalString(t, key))
+    && ['courseId','type','scheduledDate','time','reason','topicId','reflection'].every(key => isOptionalString(t, key))
     && optionalDate(t, 'scheduledDate')
     && (t.courseId === undefined || t.courseId === '' || courseIds.has(t.courseId))
     && (t.topicId === undefined || t.topicId === '' || (topicIds.has(t.topicId) && (t.courseId === undefined || t.courseId === '' || topicById.get(t.topicId)?.courseId === t.courseId)))
     && ['Learn','Practice','Revision','Quick review',undefined].includes(t.type)
     && ['done','todo','missed',undefined].includes(t.status)
-    && isOptionalFiniteNumber(t, 'minutes', 0, 360, true))) {
+    && isOptionalFiniteNumber(t, 'minutes', 0, 360, true)
+    && isOptionalFiniteNumber(t, 'actualMinutes', 0, 360, true))) {
     return invalid('The backup contains an invalid task or a task linked to a missing course or topic.');
   }
   const optionalWebUrl = (record, key) => {

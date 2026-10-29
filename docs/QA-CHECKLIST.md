@@ -66,10 +66,11 @@
 - [ ] Verify quiz history, backup import/export, recovery capacity, spaced-revision queue, and error-notebook state changes in a browser.
 
 ## Auth and security
-- [ ] Demo access works without credentials and is labeled as demo.
+- [x] Development builds offer an explicitly labeled local demo; production builds without Supabase configuration show an error and do not create a demo profile.
 - [ ] Supabase sign-up, confirmation, login, session restore, reset and logout work when configured.
 - [x] Prepare schema migrations and per-user RLS policies, including database enforcement of same-course task/topic links (migrations have not yet been executed against a Supabase project).
-- [ ] Apply both database migrations in order and independently verify RLS policies and same-course task/topic constraints before cloud data is enabled.
+- [ ] Apply all three database migrations in order and independently verify RLS policies and same-course task/topic constraints before release.
+- [x] Authenticated workspace loads must succeed before cloud saves are enabled; load failures must not upload stale local data.
 - [ ] User A cannot read or mutate User B's rows.
 - [ ] No service-role or private AI key appears in frontend assets.
 

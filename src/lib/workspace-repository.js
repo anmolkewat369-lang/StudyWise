@@ -29,6 +29,7 @@ export function toDatabaseWorkspace(workspace, userId) {
       user_id: userId, id: task.id, course_id: nullable(task.courseId), topic_id: nullable(task.topicId), title: task.title,
       task_type: task.type || 'Learn', minutes: Number(task.minutes) || 0, time_label: task.time || 'Flexible',
       scheduled_date: nullable(task.scheduledDate), status: task.status || 'todo', reason: task.reason || '',
+      session_reflection: task.reflection || '', actual_minutes: Number(task.actualMinutes) || 0,
     })),
     resources: workspace.resources.map(resource => ({
       user_id: userId, id: resource.id, course_id: nullable(resource.courseId), topic_id: nullable(resource.topicId),
@@ -49,7 +50,7 @@ export function fromDatabaseWorkspace(data) {
       practiceAttempts: row.practice_attempts || 0, practiceCorrect: row.practice_correct || 0, lastPracticedAt: row.last_practiced_at || '',
       nextReviewDate: row.next_review_date || '', practiceHistory: row.practice_history || [],
     })),
-    tasks: (data.tasks || []).map(row => ({ ...row, courseId: row.course_id || '', topicId: row.topic_id || '', type: row.task_type, time: row.time_label, scheduledDate: row.scheduled_date || '' })),
+    tasks: (data.tasks || []).map(row => ({ ...row, courseId: row.course_id || '', topicId: row.topic_id || '', type: row.task_type, time: row.time_label, scheduledDate: row.scheduled_date || '', reflection: row.session_reflection || '', actualMinutes: row.actual_minutes || 0 })),
     resources: (data.resources || []).map(row => ({ ...row, courseId: row.course_id || '', topicId: row.topic_id || '' })),
     attempts: (data.attempts || []).map(row => ({ ...row, attemptedAt: row.attempted_at })),
     settings: data.settings || {},

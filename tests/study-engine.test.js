@@ -51,7 +51,7 @@ test('priority score prefers important, weaker topics', () => {
 
 test('workspace backup exports supported data and validates a round trip', async () => {
   const { createWorkspaceBackup, validateWorkspaceBackup } = await import('../src/lib/study-engine.js');
-  const data = { courses: [{ id: 'c1', name: 'Course' }], topics: [{ id: 't1', courseId: 'c1', name: 'Topic', status: 'not-started', importance: 'High', minutes: 30, mastery: 0 }], tasks: [{ id: 's1', courseId: 'c1', title: 'Task', status: 'todo', minutes: 25 }], resources: [{ id: 'r1', courseId: 'c1', title: 'Resource', kind: 'Notes' }], settings: { dailyMinutes: 120 }, attempts: [{ id: 'a1', attemptedAt: '2026-10-28T10:00:00.000Z', total: 1, correct: 1, results: [{ topicId: 't1', correct: true }] }] };
+  const data = { courses: [{ id: 'c1', name: 'Course' }], topics: [{ id: 't1', courseId: 'c1', name: 'Topic', status: 'not-started', importance: 'High', minutes: 30, mastery: 0 }], tasks: [{ id: 's1', courseId: 'c1', title: 'Task', status: 'done', minutes: 25, reflection: 'Went well', actualMinutes: 22 }], resources: [{ id: 'r1', courseId: 'c1', title: 'Resource', kind: 'Notes' }], settings: { dailyMinutes: 120 }, attempts: [{ id: 'a1', attemptedAt: '2026-10-28T10:00:00.000Z', total: 1, correct: 1, results: [{ topicId: 't1', correct: true }] }] };
   const backup = createWorkspaceBackup(data, '2026-10-28T00:00:00.000Z');
   assert.equal(backup.app, 'StudyWise');
   assert.equal(backup.schemaVersion, 1);
@@ -86,6 +86,17 @@ test('daily workload summaries are derived from open task records', () => {
   assert.deepEqual(getTaskMetricsForDate(tasks, '2026-10-28', '2026-10-28'), {
     total: 3, done: 1, open: 2, remainingMinutes: 65, learningMinutes: 40, practiceMinutes: 25,
   });
+});
+
+test('missed tasks stay visible without inflating remaining study time', () => {
+  const tasks = [
+    { id: 'todo', scheduledDate: '2026-10-28', status: 'todo', minutes: 45 },
+    { id: 'missed', scheduledDate: '2026-10-28', status: 'missed', minutes: 30 },
+  ];
+  assert.deepEqual(getTaskMetricsForDate(tasks, '2026-10-28', '2026-10-28'), {
+    total: 2, done: 0, open: 1, remainingMinutes: 45, learningMinutes: 0, practiceMinutes: 45,
+  });
+  assert.equal(getStudyCapacityForDate(tasks, '2026-10-28', 120, '2026-10-28').capacityMinutes, 75);
 });
 
 
